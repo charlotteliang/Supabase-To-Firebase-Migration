@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Environment and Secrets
+.env
+firebase-service.json
+supabase-service.json
+
+# Migration Outputs (Sensitive Data)
+migration_tool/auth/supabase_users.json
+migration_tool/firestore/todos_export.json
+*.json
+
+# OS specific
+.DS_Store
