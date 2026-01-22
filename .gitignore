@@ -9,7 +9,10 @@ supabase-service.json
 # Migration Outputs (Sensitive Data)
 migration_tool/auth/supabase_users.json
 migration_tool/firestore/todos_export.json
+# Ignore other JSONs but keep package config
 *.json
+!package.json
+!package-lock.json
 
 # OS specific
 .DS_Store
