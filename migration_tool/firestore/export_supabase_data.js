@@ -1,11 +1,6 @@
-
-import { createClient } from '@supabase/supabase-js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const { createClient } = require('@supabase/supabase-js');
+const fs = require('fs');
+const path = require('path');
 
 const configPath = path.resolve(__dirname, '../../supabase-service.json');
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));

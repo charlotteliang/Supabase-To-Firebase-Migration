@@ -9,31 +9,49 @@ This guide details how to migrate your Users and Data from Supabase to Firebase.
     npm install pg firebase-admin @supabase/supabase-js
     ```
 
-2.  **Configuration**: 
+2.  **Configuration**:
     The scripts rely on `firebase-service.json` (for Firebase) and `supabase-service.json` (for Supabase).
 
     *   **Step 2.1: `supabase-service.json`** (For Supabase)
         *   Create `supabase-service.json` in the root directory if it doesn't exist.
-        *   Fill in your Supabase connection details (matching the structure used in the forward migration guide):
-            *   `dbHost`, `dbUser`, `dbPassword`, `dbPort`
-            *   `projectUrl`, `serviceRoleKey`
+        *   **File Content**:
+            ```json
+            {
+              "dbHost": "db.cvymjejszmjvfnvzadie.supabase.co",
+              "dbUser": "postgres",
+              "dbPassword": "YOUR_DB_PASSWORD_HERE",
+              "dbPort": 5432,
+              "projectUrl": "https://cvymjejszmjvfnvzadie.supabase.co",
+              "serviceRoleKey": "YOUR_SERVICE_ROLE_KEY_HERE"
+            }
+            ```
+        *   **Where to find these values**:
+            *   Go to your [Supabase Dashboard](https://supabase.com/dashboard) and select your project.
+            *   **dbHost**: Settings > Database > Connection parameters > Host.
+            *   **dbUser**: Settings > Database > Connection parameters > User (default is `postgres`).
+            *   **dbPassword**: The password you set when creating the project. If you forgot it, reset it in Settings > Database > Reset Database Password.
+            *   **dbPort**: Settings > Database > Connection parameters > Port (default is `5432` or `6543`). Use `5432` for direct connection.
+            *   **projectUrl**: Settings > API > Project URL.
+            *   **serviceRoleKey**: Settings > API > Project API keys > `service_role` (Reveal it). **Keep this secret!**
 
     *   **Step 2.2: `firebase-service.json`**
         *   The scripts expect a `firebase-service.json` file in the root.
         *   **Generate this file**:
             1.  Go to the [Firebase Console](https://console.firebase.google.com/).
-            2.  Navigate to **Project Settings** > **Service Accounts**.
-            3.  Click **Generate new private key**.
-            4.  Rename the downloaded file to `firebase-service.json` and place it in your project root.
-3.  **Firebase Project Setup**:
-    *   **Create Project**: Create a new Firebase project (or use an existing one) in the [Firebase Console](https://console.firebase.google.com/).
-    *   **Enable Authentication**: Go to **Authentication** > **Get started**. You *must* initialize Authentication for the import to work, even if you don't enable specific providers yet.
-    *   **Create Database**: 
-        *   **Option A (CLI - Preferred)**: Run `firebase init firestore` (select your project), then `firebase deploy --only firestore`. This provisions the database in the default location.
-        *   **Option B (Console)**: If CLI fails or you prefer the UI, go to **Firestore Database** > **Create database**. Select a region (e.g., `nam5`) and start in **Production mode**.
-    *   **Service Account**: Go to Project Settings > Service Accounts > Generate new private key. Save this as `firebase-service.json` in your project root. **Crucial**: This key must match the project you are importing into.
+            2.  **Create a new project** if you haven't done so (or select an existing one).
+            3.  Navigate to **Project Settings** (click the gear icon ⚙️ in the top left).
+            4.  Go to the **Service accounts** tab.
+            5.  Click **Generate new private key**.
+            6.  Rename the downloaded file to `firebase-service.json` and place it in your project root.
+            **Crucial**: This key must match the project you are importing into.
 
 ## 1. Migrate Authentication
+
+*   **Prerequisite: Enable Authentication**
+    1.  Go to **Authentication** > **Get started** in the Firebase Console.
+    2.  Go to the **Sign-in method** tab.
+    3.  Click **Email/Password** and **Enable** it. Assume you have the same Auth provider enabled in Supabase.
+    *Why?* The import script creates the user records, but your app won't be able to log them in unless the Email/Password provider is actually enabled.
 
 We will export users from Supabase, preserving their **Bcrypt** password hashes, and import them into Firebase.
 
@@ -41,15 +59,15 @@ We will export users from Supabase, preserving their **Bcrypt** password hashes,
 Supabase uses standard Bcrypt hashing. We must query the `auth.users` table directly to get these hashes.
 
 ```bash
-node reverse_migration_tool/auth/export_supabase_auth.js
+node migration_tool/auth/export_supabase_auth.js
 ```
-*Output: `reverse_migration_tool/auth/supabase_users.json`*
+*Output: `migration_tool/auth/supabase_users.json`*
 
 ### Step 1.2: Import to Firebase
 Import the users into Firebase Authentication. This script tells Firebase to interpret the hashes as Bcrypt.
 
 ```bash
-node reverse_migration_tool/auth/import_firebase_auth.js
+node migration_tool/auth/import_firebase_auth.js
 ```
 *Result: Users are created in Firebase with their same UIDs and passwords.*
 
@@ -61,17 +79,27 @@ We will export tables from Supabase and import them into Firestore collections.
 Export data from Supabase tables (e.g., `todos`) to JSON.
 
 ```bash
-node reverse_migration_tool/firestore/export_supabase_data.js
+node migration_tool/firestore/export_supabase_data.js
 ```
-*Output: `reverse_migration_tool/firestore/todos_export.json`*
+*Output: `migration_tool/firestore/todos_export.json`*
 
 ### Step 2.2: Import to Firestore
+
+*   **Prerequisite: Create Database**
+    Before importing, ensure Firestore is provisioned:
+    *   **Option A (CLI - Preferred)**: Run `firebase init firestore` (select your project), then `firebase deploy --only firestore`.
+        > [!WARNING]
+        > **Do not skip `firebase init`!**
+        > Do not attempt to manually create `firebase.json` or `.firebaserc`. The CLI initialization sets up crucial project links and authentication states that are required for the migration scripts to work correctly.
+
+    *   **Option B (Console)**: If CLI fails or you prefer the UI, go to **Firestore Database** > **Create database**. Select a region (e.g., `nam5`) and start in **Production mode**.
+
 Import the JSON data into Firestore.
 *   **IDs**: We preserve the Supabase UUIDs as the Firestore Document IDs.
 *   **User References**: Since we migrated users with their keys intact, `uid` fields in your data will automatically match the imported users in Firebase! No ID mapping required.
 
 ```bash
-node reverse_migration_tool/firestore/import_firebase_data.js
+node migration_tool/firestore/import_firebase_data.js
 ```
 
 ## 3. Verify and Secure

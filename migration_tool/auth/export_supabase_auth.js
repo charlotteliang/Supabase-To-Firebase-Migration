@@ -1,12 +1,7 @@
-
-import pg from 'pg';
+const pg = require('pg');
 const { Client } = pg;
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const fs = require('fs');
+const path = require('path');
 
 // Load config
 const configPath = path.resolve(__dirname, '../../supabase-service.json');
@@ -17,7 +12,7 @@ if (!fs.existsSync(configPath)) {
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
 if (!config.dbHost || !config.dbPassword) {
-    console.error('Database credentials (dbHost, dbPassword) missing in migration_config.json');
+    console.error('Database credentials (dbHost, dbPassword) missing in supabase-service.json');
     process.exit(1);
 }
 
