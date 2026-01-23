@@ -102,25 +102,41 @@ Import the JSON data into Firestore.
 node migration_tool/firestore/import_firebase_data.js
 ```
 
-## 3. Verify and Secure
+## 3. Update Client Code
+
+Update your frontend application (`index.html`, `app.js`) to use the Firebase SDK instead of Supabase. Replace Supabase client initialization, Auth, and Database calls with Firebase equivalents.
+
+> [!TIP]
+> **Automate this with MCP**: If you are using an AI agent with the **Firebase MCP Server**, you can simply ask it to *"fetch my firebase config and update app.js"*. The agent can retrieve your API keys directly from the project and inject them for you, skipping manual console lookups.
+
+## 4. Verify and Secure
 1.  **Firebase Console**: Check Authentication users and Firestore data to ensure everything was imported correctly.
-2.  **App Config**: Update your app to point back to the Firebase config.
-3.  **Security Rules**:
+2.  **Security Rules**:
     *   The `firestore.rules` file in your project defines your database security.
     *   **Deploy Rules**: Run `firebase deploy --only firestore:rules` to deploy the rules from your local file.
-    *   **Example (Locked down)**:
+    *   **Example (Secure User Data)**:
         ```javascript
         rules_version = '2';
         service cloud.firestore {
           match /databases/{database}/documents {
-            match /{document=**} {
-              allow read, write: if request.auth != null; // Only authenticated users
+            match /todos/{document} {
+              // Ensure user_id matches the authenticated user
+              allow create: if request.auth != null && request.resource.data.user_id == request.auth.uid;
+              allow read, update, delete: if request.auth != null && resource.data.user_id == request.auth.uid;
             }
           }
         }
         ```
-    *   **Important**: The default rules set by `firebase_init` are often "Test Mode" (open to everyone). Update them to secure your user data!
-4.  **Test Application**:
+    *   **Important**: Use these rules to ensure users can ONLY access their own data.
+    *   **Note**: When using these rules, your client queries **MUST** includes a filter for `user_id`.
+        ```javascript
+        // App code must match rules:
+        const q = query(
+            collection(db, "todos"), 
+            where("user_id", "==", auth.currentUser.uid)
+        );
+        ```
+3.  **Test Application**:
     *   Launch your app.
     *   **Sign In**: Try logging in with a migrated user (e.g., `test@example.com`) using their *original* password. It should work immediately.
     *   **Check Data**: Verify that their data (e.g., todo items) loads correctly.
